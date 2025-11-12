@@ -75,13 +75,13 @@ app.get('/manifest.json', (req, res) => {
             resources: ['catalog', 'meta'],
             types: [defaultType],
             idPrefixes: [prefix],
-            catalogs: Object.entries(catalogs).map(([x, y]) => ({
+            catalogs: Object.entries(catalogs ?? {}).map(([x, y]) => ({
                 type: defaultType,
                 id: prefix + x,
-                name: y,
+                name: countries?.[x],
                 extra: [{
                     name: 'genre',
-                    options: [...new Set()]
+                    options: [...new Set(y.map(z => streams?.[z].category).filter(Boolean))]
                 }]
             }))
         });
