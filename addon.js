@@ -24,24 +24,40 @@ app.use((req, res, next) => {
     next();
 });
 
-/** @type {} */
+/** @type {{[id: string]: string}?} */
+let countries;
+/** @type {{[id: string]: string[]}?} */
+let catalogs;
+/** @type {{[id: string]: {name: string, urls: string[]}, category: string?}?} */
 let streams;
 setInterval(async () => {
     try {
-        const countryMap = await (await fetch('https://raw.githubusercontent.com/TVGarden/tv-garden-channel-list/main/channels/raw/countries_metadata.json')).json();
+        // fetch country ids and names
+        let countries2 = Object.fromEntries(Object.entries(await (await fetch('https://raw.githubusercontent.com/TVGarden/tv-garden-channel-list/main/channels/raw/countries_metadata.json')).json()).map(([x, y]) => [x.toLowerCase(), y.country]));
+        
+        let catalogs2 = {};
+        let streams2 = {};
         // fetch streams for each country
-        const streams2 = Object.fromEntries(await Promise.all((await (await fetch('https://api.github.com/repos/TVGarden/tv-garden-channel-list/contents/channels/raw/countries')).json())
-            .map(async x => [
-                countryMap[x.name.slice(0, -'.json'.length).toUpperCase()].country,
-                Object.fromEntries((await (await fetch('https://raw.githubusercontent.com/TVGarden/tv-garden-channel-list/main/channels/raw/countries/' + x.name)).json())
-                    .map(y => [y.nanoid, y]))
-            ])));
+        await Promise.all((await (await fetch('https://api.github.com/repos/TVGarden/tv-garden-channel-list/contents/channels/raw/countries')).json())
+            .map(async x => {
+                catalogs2[x.name.slice(0, -'.json'.length)] = [];
+                (await (await fetch('https://raw.githubusercontent.com/TVGarden/tv-garden-channel-list/main/channels/raw/countries/' + x.name)).json())
+                    .forEach(y => {
+                        catalogs2[y.country].push(y.nanoid);
+                        streams2[y.nanoid] = {
+                            name: y.name,
+                            urls: y.iptv_urls
+                        };
+                    });
+            }));
+        
         // add category label
         await Promise.all((await (await fetch('https://api.github.com/repos/TVGarden/tv-garden-channel-list/contents/channels/raw/categories')).json())
-            .map(async x =>
-                (await (await fetch('https://raw.githubusercontent.com/TVGarden/tv-garden-channel-list/main/channels/raw/categories/' + x.name)).json())
-                    .map(y => streams2[countryMap[y.country.toUpperCase()].country][y.nanoid].category = x.name.slice(0, -'.json'.length)
-            )))
+            .map(async x => (x.name !== 'all-channels.json' ? (await (await fetch('https://raw.githubusercontent.com/TVGarden/tv-garden-channel-list/main/channels/raw/categories/' + x.name)).json()) : [])
+                .forEach(y => streams2[y.nanoid].category = x.name.slice(0, -'.json'.length))
+        ))
+        countries = countries2;
+        catalogs = catalogs2;
         streams = streams2;
     } catch (error) {
         if (process.env.DEV_LOGGING) console.error('Error in Stream fetching: ' + error);
@@ -59,15 +75,12 @@ app.get('/manifest.json', (req, res) => {
             resources: ['catalog', 'meta'],
             types: [defaultType],
             idPrefixes: [prefix],
-            catalogs: [{
+            catalogs: Object.entries(streams ?? {}).map(([x, y]) => ({
                 type: defaultType,
-                id: prefix + 'PPV.to',
-                name: 'PPV.to',
-                extra: [{
-                    name: 'genre',
-                    options: streams?.map(x => x.category) ?? []
-                }]
-            }]
+                id: prefix + x,
+                name: x,
+                extra: [...new Set(Object.values(y).map(z => z.category))]
+            }))
         });
     } catch (error) {
         if (process.env.DEV_LOGGING) console.error('Error in Manifest handler: ' + error);
@@ -80,13 +93,11 @@ app.get('/catalog/:type/:id/:extra?.json', async (req, res) => {
     try {
         if (!req.params.id?.startsWith(prefix)) throw new Error(`Unknown ID in Catalog handler: "${req.params.id}"`);
         return res.json({
-            metas: streams?.flatMap(x => x.streams.map(y => ({
-                id: prefix + y.id,
+            metas: Object.values(streams?.[req.params.id.slice(prefix.length)] ?? []).map(x => ({
+                id: prefix + x.nanoid,
                 type: req.params.type,
-                name: y.name,
-                poster: y.poster,
-                posterShape: 'landscape'
-            }))) ?? []
+                name: x.name,
+            }))
         });
     } catch (error) {
         if (process.env.DEV_LOGGING) console.error('Error in Catalog handler: ' + error);
@@ -98,21 +109,15 @@ app.get('/catalog/:type/:id/:extra?.json', async (req, res) => {
 app.get('/meta/:type/:id.json', async (req, res) => {
     try {
         if (!req.params.id?.startsWith(prefix)) throw new Error(`Unknown ID in Meta handler: "${req.params.id}"`);
-        const stream = streams?.flatMap(x => x.streams).find(x => `${prefix}${x.id}` === req.params.id);
-        if (!stream) throw new Error(`Unknown ID in Meta handler: "${req.params.id}"`);
         return res.json({
             meta: {
                 id: req.params.id,
                 type: req.params.type,
                 name: stream.name,
-                poster: stream.poster,
-                posterShape: 'landscape',
-                background: stream.poster,
                 videos: [{
                     id: req.params.id + ':1:1',
                     title: stream.name,
-                    released: new Date(1000 * stream.starts_at).toISOString(),
-                    thumbnail: stream.poster,
+                    released: new Date(0).toISOString(),
                     streams: [{
                         url: (await (await fetch(stream.iframe)).text()).match(/https:\/\/.*?\.m3u8/)?.[0],
                         name: stream.uri_name,
