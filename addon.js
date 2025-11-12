@@ -100,10 +100,12 @@ app.get('/manifest.json', (req, res) => {
 app.get('/catalog/:type/:id/:extra?.json', async (req, res) => {
     try {
         if (!req.params.id?.startsWith(prefix)) throw new Error(`Unknown ID in Catalog handler: "${req.params.id}"`);
+        const genre = Object.fromEntries(new URLSearchParams(req.params.extra ?? '')).genre;
         return res.json({
-            metas: Object.values(catalogs?.[req.params.id.slice(prefix.length)] ?? {}).map(x => {
+            metas: Object.values(catalogs?.[req.params.id.slice(prefix.length)] ?? {}).flatMap(x => {
                 const stream = streams?.[x];
                 if (!stream) throw new Error(`Unknown stream ID in Catalog handler: "${x}"`);
+                if (genre && stream.category !== genre) return [];
                 return {
                     id: prefix + x,
                     type: req.params.type,
