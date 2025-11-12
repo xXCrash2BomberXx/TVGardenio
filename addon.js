@@ -34,7 +34,7 @@ setInterval(async () => {
     try {
         // fetch country ids and names
         let countries2 = Object.fromEntries(Object.entries(await (await fetch('https://raw.githubusercontent.com/TVGarden/tv-garden-channel-list/main/channels/raw/countries_metadata.json')).json()).map(([x, y]) => [x.toLowerCase(), y.country]));
-        
+
         let catalogs2 = {};
         let streams2 = {};
         // fetch streams for each country
@@ -50,7 +50,7 @@ setInterval(async () => {
                         };
                     });
             }));
-        
+
         // add category label
         await Promise.all((await (await fetch('https://api.github.com/repos/TVGarden/tv-garden-channel-list/contents/channels/raw/categories')).json())
             .map(async x => (x.name !== 'all-channels.json' ? (await (await fetch('https://raw.githubusercontent.com/TVGarden/tv-garden-channel-list/main/channels/raw/categories/' + x.name)).json()) : [])
@@ -75,11 +75,14 @@ app.get('/manifest.json', (req, res) => {
             resources: ['catalog', 'meta'],
             types: [defaultType],
             idPrefixes: [prefix],
-            catalogs: Object.entries(streams ?? {}).map(([x, y]) => ({
+            catalogs: Object.entries(catalogs).map(([x, y]) => ({
                 type: defaultType,
                 id: prefix + x,
-                name: x,
-                extra: [...new Set(Object.values(y).map(z => z.category))]
+                name: y,
+                extra: [{
+                    name: 'genre',
+                    options: [...new Set()]
+                }]
             }))
         });
     } catch (error) {
