@@ -28,15 +28,18 @@ app.use((req, res, next) => {
 let countries;
 /** @type {{[id: string]: string[]}?} */
 let catalogs;
-/** @type {{[id: string]: {name: string, urls: string[]}, category: string?}?} */
+/** @type {{[id: string]: {name: string, urls: string[], category: string?}}?} */
 let streams;
 setInterval(async () => {
     try {
         // fetch country ids and names
-        let countries2 = Object.fromEntries(Object.entries(await (await fetch('https://raw.githubusercontent.com/TVGarden/tv-garden-channel-list/main/channels/raw/countries_metadata.json')).json()).map(([x, y]) => [x.toLowerCase(), y.country]));
+        /** @type {{[id: string]: string}} */
+        const countries2 = Object.fromEntries(Object.entries(await (await fetch('https://raw.githubusercontent.com/TVGarden/tv-garden-channel-list/main/channels/raw/countries_metadata.json')).json()).map(([x, y]) => [x.toLowerCase(), y.country]));
 
-        let catalogs2 = {};
-        let streams2 = {};
+        /** @type {{[id: string]: {name: string, urls: string[]}, category: string?}} */
+        const catalogs2 = {};
+        /** @type {{[id: string]: {name: string, urls: string[], category: string?}}} */
+        const streams2 = {};
         // fetch streams for each country
         await Promise.all((await (await fetch('https://api.github.com/repos/TVGarden/tv-garden-channel-list/contents/channels/raw/countries')).json())
             .map(async x => {
@@ -55,7 +58,7 @@ setInterval(async () => {
         await Promise.all((await (await fetch('https://api.github.com/repos/TVGarden/tv-garden-channel-list/contents/channels/raw/categories')).json())
             .map(async x => (x.name !== 'all-channels.json' ? (await (await fetch('https://raw.githubusercontent.com/TVGarden/tv-garden-channel-list/main/channels/raw/categories/' + x.name)).json()) : [])
                 .forEach(y => streams2[y.nanoid].category = x.name.slice(0, -'.json'.length))
-        ))
+            ))
         countries = countries2;
         catalogs = catalogs2;
         streams = streams2;
@@ -96,11 +99,15 @@ app.get('/catalog/:type/:id/:extra?.json', async (req, res) => {
     try {
         if (!req.params.id?.startsWith(prefix)) throw new Error(`Unknown ID in Catalog handler: "${req.params.id}"`);
         return res.json({
-            metas: Object.values(streams?.[req.params.id.slice(prefix.length)] ?? []).map(x => ({
-                id: prefix + x.nanoid,
-                type: req.params.type,
-                name: x.name,
-            }))
+            metas: Object.values(catalogs?.[req.params.id.slice(prefix.length)] ?? {}).map(x => {
+                const stream = streams?.[x];
+                if (!stream) throw new Error(`Unknown stream ID in Catalog handler: "${x}"`);
+                return {
+                    id: prefix + x,
+                    type: req.params.type,
+                    name: stream.name
+                };
+            })
         });
     } catch (error) {
         if (process.env.DEV_LOGGING) console.error('Error in Catalog handler: ' + error);
@@ -112,6 +119,8 @@ app.get('/catalog/:type/:id/:extra?.json', async (req, res) => {
 app.get('/meta/:type/:id.json', async (req, res) => {
     try {
         if (!req.params.id?.startsWith(prefix)) throw new Error(`Unknown ID in Meta handler: "${req.params.id}"`);
+        const stream = streams?.[req.params.id.slice(prefix.length)];
+        if (!stream) throw new Error(`Unknown stream ID in Meta handler: "${req.params.id}"`);
         return res.json({
             meta: {
                 id: req.params.id,
@@ -121,11 +130,10 @@ app.get('/meta/:type/:id.json', async (req, res) => {
                     id: req.params.id + ':1:1',
                     title: stream.name,
                     released: new Date(0).toISOString(),
-                    streams: [{
-                        url: (await (await fetch(stream.iframe)).text()).match(/https:\/\/.*?\.m3u8/)?.[0],
-                        name: stream.uri_name,
+                    streams: stream.urls.map(x => ({
+                        url: x,
                         behaviorHints: { notWebReady: true }
-                    }]
+                    }))
                 }],
                 behaviorHints: { defaultVideoId: req.params.id + ':1:1' }
             }
