@@ -28,7 +28,7 @@ app.use((req, res, next) => {
 let countries;
 /** @type {{[id: string]: string[]}?} */
 let catalogs;
-/** @type {{[id: string]: {name: string, urls: string[], category: string?}}?} */
+/** @type {{[id: string]: {name: string, urls: string[], language: string, country: string, category: string?}}?} */
 let streams;
 (async function update() {
     try {
@@ -38,7 +38,7 @@ let streams;
 
         /** @type {{[id: string]: {name: string, urls: string[]}, category: string?}} */
         const catalogs2 = {};
-        /** @type {{[id: string]: {name: string, urls: string[], category: string?}}} */
+        /** @type {{[id: string]: {name: string, urls: string[], language: string, country: string, category: string?}}} */
         const streams2 = {};
         // fetch streams for each country
         await Promise.all((await (await fetch('https://api.github.com/repos/TVGarden/tv-garden-channel-list/contents/channels/raw/countries')).json())
@@ -49,7 +49,9 @@ let streams;
                         catalogs2[y.country].push(y.nanoid);
                         streams2[y.nanoid] = {
                             name: y.name,
-                            urls: y.iptv_urls
+                            urls: y.iptv_urls,
+                            language: y.language,
+                            country: y.country
                         };
                     });
             }));
@@ -139,6 +141,9 @@ app.get('/meta/:type/:id.json', async (req, res) => {
                         behaviorHints: { notWebReady: true }
                     }))
                 }],
+                language: stream.language,
+                country: stream.country,
+                website: `https://tv.garden/${stream.country}/${req.params.id.slice(prefix.length)}`,
                 behaviorHints: { defaultVideoId: req.params.id + ':1:1' }
             }
         });
