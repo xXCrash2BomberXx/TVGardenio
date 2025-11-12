@@ -62,7 +62,6 @@ let streams;
         countries = countries2;
         catalogs = catalogs2;
         streams = streams2;
-        console.log("LOADED");
     } catch (error) {
         if (process.env.DEV_LOGGING) console.error('Error in Stream fetching: ' + error);
     } finally {
