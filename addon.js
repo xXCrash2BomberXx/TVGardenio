@@ -30,7 +30,7 @@ let countries;
 let catalogs;
 /** @type {{[id: string]: {name: string, urls: string[], category: string?}}?} */
 let streams;
-setInterval(async () => {
+(async function update() {
     try {
         // fetch country ids and names
         /** @type {{[id: string]: string}} */
@@ -58,14 +58,17 @@ setInterval(async () => {
         await Promise.all((await (await fetch('https://api.github.com/repos/TVGarden/tv-garden-channel-list/contents/channels/raw/categories')).json())
             .map(async x => (x.name !== 'all-channels.json' ? (await (await fetch('https://raw.githubusercontent.com/TVGarden/tv-garden-channel-list/main/channels/raw/categories/' + x.name)).json()) : [])
                 .forEach(y => streams2[y.nanoid].category = x.name.slice(0, -'.json'.length))
-            ))
+            ));
         countries = countries2;
         catalogs = catalogs2;
         streams = streams2;
+        console.log("LOADED");
     } catch (error) {
         if (process.env.DEV_LOGGING) console.error('Error in Stream fetching: ' + error);
+    } finally {
+        setTimeout(update, 3600000);
     }
-}, 3600);
+})();
 
 // Stremio Addon Manifest Route
 app.get('/manifest.json', (req, res) => {
