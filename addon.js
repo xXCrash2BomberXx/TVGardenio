@@ -36,7 +36,7 @@ let streams;
 let lastFetchTime = 0;
 async function getData() {
     const now = Date.now();
-    if (streams && (now - lastFetchTime) < 3600000) return;
+    if (countries && catalogs && streams && (now - lastFetchTime) < 3600000) return;
     lastFetchTime = now;
     try {
         /** @type {Countries} */
