@@ -24,23 +24,24 @@ app.use((req, res, next) => {
     next();
 });
 
-/** @type {{[id: string]: string}?} */
+/** @typedef {{[id: string]: string}?} Countries */
+/** @type {Countries?} */
 let countries;
-/** @type {{[id: string]: string[]}?} */
+/** @typedef {{[id: string]: string[]}?} Catalogs */
+/** @type {Catalogs?} */
 let catalogs;
-/** @type {{[id: string]: {name: string, urls: string[], language: string, country: string, category: string?}}?} */
+/** @typedef {{[id: string]: {name: string, urls: string[], youtube_urls: string[], language: string, country: string, category: string?}}?} Streams */
+/** @type {Streams?} */
 let streams;
 (async function update() {
     try {
-        // fetch country ids and names
-        /** @type {{[id: string]: string}} */
+        /** @type {Countries} */
         const countries2 = Object.fromEntries(Object.entries(await (await fetch('https://raw.githubusercontent.com/TVGarden/tv-garden-channel-list/main/channels/raw/countries_metadata.json')).json()).map(([x, y]) => [x.toLowerCase(), y.country]));
-
-        /** @type {{[id: string]: {name: string, urls: string[]}, category: string?}} */
+        /** @type {Catalogs} */
         const catalogs2 = {};
-        /** @type {{[id: string]: {name: string, urls: string[], language: string, country: string, category: string?}}} */
+        /** @type {Streams} */
         const streams2 = {};
-        // fetch streams for each country
+
         await Promise.all((await (await fetch('https://api.github.com/repos/TVGarden/tv-garden-channel-list/contents/channels/raw/countries')).json())
             .map(async x => {
                 catalogs2[x.name.slice(0, -'.json'.length)] = [];
@@ -48,19 +49,19 @@ let streams;
                     .forEach(y => {
                         catalogs2[y.country].push(y.nanoid);
                         streams2[y.nanoid] = {
-                            name: y.name,
-                            urls: y.iptv_urls,
-                            language: y.language,
-                            country: y.country
+                            name: y.name ?? 'Unknown',
+                            urls: y.iptv_urls ?? [],
+                            youtube_urls: y.youtube_urls ?? [],
+                            language: y.language ?? '',
+                            country: y.country ?? ''
                         };
                     });
             }));
-
-        // add category label
         await Promise.all((await (await fetch('https://api.github.com/repos/TVGarden/tv-garden-channel-list/contents/channels/raw/categories')).json())
             .map(async x => (x.name !== 'all-channels.json' ? (await (await fetch('https://raw.githubusercontent.com/TVGarden/tv-garden-channel-list/main/channels/raw/categories/' + x.name)).json()) : [])
                 .forEach(y => streams2[y.nanoid].category = x.name.slice(0, -'.json'.length))
             ));
+
         countries = countries2;
         catalogs = catalogs2;
         streams = streams2;
@@ -136,10 +137,12 @@ app.get('/meta/:type/:id.json', async (req, res) => {
                     id: req.params.id + ':1:1',
                     title: stream.name,
                     released: new Date(0).toISOString(),
-                    streams: stream.urls.map(x => ({
+                    streams: [...stream.urls.map(x => ({
                         url: x,
                         behaviorHints: { notWebReady: true }
-                    }))
+                    })), ...stream.youtube_urls.map(x => ({
+                        ytId: x.match(/[A-Za-z0-9_-]{10}[AEIMQUYcgkosw048]$/)?.[0]
+                    }))]
                 }],
                 language: stream.language,
                 country: stream.country,
