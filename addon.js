@@ -33,7 +33,11 @@ let catalogs;
 /** @typedef {{[id: string]: {name: string, urls: string[], youtube_urls: string[], language: string, country: string, category: string?}}?} Streams */
 /** @type {Streams?} */
 let streams;
-(async function update() {
+let lastFetchTime = 0;
+async function getData() {
+    const now = Date.now();
+    if (streams && (now - lastFetchTime) < 3600000) return;
+    lastFetchTime = now;
     try {
         /** @type {Countries} */
         const countries2 = Object.fromEntries(Object.entries(await (await fetch('https://raw.githubusercontent.com/TVGarden/tv-garden-channel-list/main/channels/raw/countries_metadata.json')).json()).map(([x, y]) => [x.toLowerCase(), y.country]));
@@ -67,14 +71,13 @@ let streams;
         streams = streams2;
     } catch (error) {
         if (process.env.DEV_LOGGING) console.error('Error in Stream fetching: ' + error);
-    } finally {
-        setTimeout(update, 3600000);
     }
-})();
+}
 
 // Stremio Addon Manifest Route
-app.get('/manifest.json', (req, res) => {
+app.get('/manifest.json', async (req, res) => {
     try {
+        await getData();
         return res.json({
             id: 'tvgardenio.elfhosted.com',
             version: VERSION,
@@ -104,6 +107,7 @@ app.get('/catalog/:type/:id/:extra?.json', async (req, res) => {
     try {
         if (!req.params.id?.startsWith(prefix)) throw new Error(`Unknown ID in Catalog handler: "${req.params.id}"`);
         const genre = Object.fromEntries(new URLSearchParams(req.params.extra ?? '')).genre;
+        await getData();
         return res.json({
             metas: Object.values(catalogs?.[req.params.id.slice(prefix.length)] ?? {}).flatMap(x => {
                 const stream = streams?.[x];
@@ -126,6 +130,7 @@ app.get('/catalog/:type/:id/:extra?.json', async (req, res) => {
 app.get('/meta/:type/:id.json', async (req, res) => {
     try {
         if (!req.params.id?.startsWith(prefix)) throw new Error(`Unknown ID in Meta handler: "${req.params.id}"`);
+        await getData();
         const stream = streams?.[req.params.id.slice(prefix.length)];
         if (!stream) throw new Error(`Unknown stream ID in Meta handler: "${req.params.id}"`);
         return res.json({
