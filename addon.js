@@ -95,7 +95,7 @@ app.get('/manifest.json', async (req, res) => {
                     options: [...new Set(y.map(z => streams?.[z].category).filter(Boolean))]
                 }]
             })),
-            icon: `https://github.com/xXCrash2BomberXx/TVGardenio/blob/${process.env.DEV_LOGGING ? 'main' : `v${VERSION}`}/icon.png?raw=true`,
+            logo: `https://github.com/xXCrash2BomberXx/TVGardenio/blob/${process.env.DEV_LOGGING ? 'main' : `v${VERSION}`}/icon.png?raw=true`,
             "stremioAddonsConfig": {
                 "issuer": "https://stremio-addons.net",
                 "signature": "eyJhbGciOiJkaXIiLCJlbmMiOiJBMTI4Q0JDLUhTMjU2In0..z-aptRhGjAXG1c8zfXFgTQ.LdwD3y8_TTfnZnZ8pkXi4GVjC3I9HEl7iKCKDAksJ9W-PrgIJuMgDDN6jFP7v2gszADiRDbrAoLaLuvBr1ANxPfz1WO6CemsvgNpHoweux1pqKoMU2rS0-0Ff3q_y6mG.ktbxvazo9vrPYhUIeCh7tA"
