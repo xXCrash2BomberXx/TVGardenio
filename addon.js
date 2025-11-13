@@ -79,9 +79,9 @@ app.get('/manifest.json', async (req, res) => {
     try {
         await getData();
         return res.json({
-            id: 'tvgardenio.vercel.app',
+            id: 'tvgardenio.elfhosted.com',
             version: VERSION,
-            name: 'TVGardenio | Vercel',
+            name: 'TVGardenio | ElfHosted',
             description: 'Play TVGarden live-streams.',
             resources: ['catalog', 'meta'],
             types: [defaultType],
