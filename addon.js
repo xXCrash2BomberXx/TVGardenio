@@ -40,16 +40,16 @@ async function getData() {
     lastFetchTime = now;
     try {
         /** @type {Countries} */
-        const countries2 = Object.fromEntries(Object.entries(await (await fetch('https://raw.githubusercontent.com/TVGarden/tv-garden-channel-list/main/channels/raw/countries_metadata.json')).json()).map(([x, y]) => [x.toLowerCase(), y.country]));
+        const countries2 = Object.fromEntries(Object.entries(await (await fetch('https://raw.githubusercontent.com/famelack/famelack-data/tree/main/tv/raw/countries_metadata.json')).json()).map(([x, y]) => [x.toLowerCase(), y.country]));
         /** @type {Catalogs} */
         const catalogs2 = {};
         /** @type {Streams} */
         const streams2 = {};
 
-        await Promise.all((await (await fetch('https://api.github.com/repos/TVGarden/tv-garden-channel-list/contents/channels/raw/countries')).json())
+        await Promise.all((await (await fetch('https://api.github.com/repos/famelack/famelack-data/tree/main/tv/raw/countries')).json())
             .map(async x => {
                 catalogs2[x.name.slice(0, -'.json'.length)] = [];
-                (await (await fetch('https://raw.githubusercontent.com/TVGarden/tv-garden-channel-list/main/channels/raw/countries/' + x.name)).json())
+                (await (await fetch('https://raw.githubusercontent.com/famelack/famelack-data/tree/main/tv/raw/countries/' + x.name)).json())
                     .forEach(y => {
                         catalogs2[y.country].push(y.nanoid);
                         streams2[y.nanoid] = {
@@ -61,7 +61,7 @@ async function getData() {
                         };
                     });
             }));
-        await Promise.all((await (await fetch('https://api.github.com/repos/TVGarden/tv-garden-channel-list/contents/channels/raw/categories')).json())
+        await Promise.all((await (await fetch('https://api.github.com/repos/famelack/famelack-data/tree/main/tv/raw/categories')).json())
             .map(async x => (x.name !== 'all-channels.json' ? (await (await fetch('https://raw.githubusercontent.com/TVGarden/tv-garden-channel-list/main/channels/raw/categories/' + x.name)).json()) : [])
                 .forEach(y => streams2[y.nanoid].category = x.name.slice(0, -'.json'.length))
             ));
