@@ -1,6 +1,6 @@
 {
   "name": "TVGardenio",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "A Stremio addon that loads TVGarden channels.",
   "main": "addon.js",
   "scripts": {
