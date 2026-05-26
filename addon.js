@@ -9,6 +9,9 @@ const PORT = process.env.PORT ?? 7000;
 const prefix = 'tvgarden:';
 const defaultType = 'TVGarden';
 
+const dirRoot = 'https://api.github.com/repos/famelack/famelack-data/contents/';
+const fileRoot = 'https://raw.githubusercontent.com/famelack/famelack-data/refs/heads/main/';
+
 const app = express();
 app.set('trust proxy', true);
 
@@ -40,16 +43,16 @@ async function getData() {
     lastFetchTime = now;
     try {
         /** @type {Countries} */
-        const countries2 = Object.fromEntries(Object.entries(await (await fetch('https://raw.githubusercontent.com/famelack/famelack-data/tree/main/tv/raw/countries_metadata.json')).json()).map(([x, y]) => [x.toLowerCase(), y.country]));
+        const countries2 = Object.fromEntries(Object.entries(await (await fetch(`${fileRoot}tv/raw/countries_metadata.json`)).json()).map(([x, y]) => [x.toLowerCase(), y.country]));
         /** @type {Catalogs} */
         const catalogs2 = {};
         /** @type {Streams} */
         const streams2 = {};
 
-        await Promise.all((await (await fetch('https://api.github.com/repos/famelack/famelack-data/tree/main/tv/raw/countries')).json())
+        await Promise.all((await (await fetch(`${dirRoot}tv/raw/countries`)).json())
             .map(async x => {
                 catalogs2[x.name.slice(0, -'.json'.length)] = [];
-                (await (await fetch('https://raw.githubusercontent.com/famelack/famelack-data/tree/main/tv/raw/countries/' + x.name)).json())
+                (await (await fetch(`${fileRoot}tv/raw/countries/` + x.name)).json())
                     .forEach(y => {
                         catalogs2[y.country].push(y.nanoid);
                         streams2[y.nanoid] = {
@@ -61,8 +64,8 @@ async function getData() {
                         };
                     });
             }));
-        await Promise.all((await (await fetch('https://api.github.com/repos/famelack/famelack-data/tree/main/tv/raw/categories')).json())
-            .map(async x => (x.name !== 'all-channels.json' ? (await (await fetch('https://raw.githubusercontent.com/TVGarden/tv-garden-channel-list/main/channels/raw/categories/' + x.name)).json()) : [])
+        await Promise.all((await (await fetch(`${dirRoot}tv/raw/categories`)).json())
+            .map(async x => (x.name !== 'all.json' ? (await (await fetch(`${fileRoot}tv/raw/categories/` + x.name)).json()) : [])
                 .forEach(y => streams2[y.nanoid].category = x.name.slice(0, -'.json'.length))
             ));
 
