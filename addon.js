@@ -57,9 +57,9 @@ async function getData() {
                         catalogs2[y.country].push(y.nanoid);
                         streams2[y.nanoid] = {
                             name: y.name ?? 'Unknown',
-                            urls: y.iptv_urls ?? [],
+                            urls: y.stream_urls ?? [],
                             youtube_urls: y.youtube_urls ?? [],
-                            language: y.language ?? '',
+                            language: y.languages?.[0] ?? '',
                             country: y.country ?? ''
                         };
                     });
